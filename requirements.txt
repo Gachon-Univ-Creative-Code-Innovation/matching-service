@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+kafka-python
+python-dotenv
+pydantic
+qdrant-client
+sentence-transformers
+numpy
