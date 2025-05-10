@@ -7,8 +7,7 @@ import os
 
 
 from src.Utils.Embedder import Embedding
-from src.Consumer.QdrantClient import upsertVector
-
+from src.Consumer.QdrantClient import UpsertVector
 
 envPath = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
 load_dotenv(dotenv_path=os.path.abspath(envPath))
@@ -22,7 +21,7 @@ class TagMessage(BaseModel):
 
 
 # Kafka Consumer (Kafka 메세지 소비)
-def consume():
+def Consume():
     consumer = KafkaConsumer(
         "GithubTags",
         "BlogTags",
@@ -33,4 +32,4 @@ def consume():
     for message in consumer:
         data = TagMessage(**message.value)
         tagVector = [(tag, Embedding(tag)) for tag in data.tags]
-        upsertVector(data.userID, tagVector)
+        UpsertVector(data.userID, tagVector)
