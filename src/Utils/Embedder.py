@@ -1,6 +1,8 @@
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
+model = SentenceTransformer("Leejy0-0/kr-con-embedding-sbert-v2")
+
 
 # Normalization
 def Normalize(vector):
@@ -10,7 +12,7 @@ def Normalize(vector):
 
 # Emvedding function
 def Embedding(tag: str):
-    model = SentenceTransformer("all-mpnet-base-v2")
+
     vector = model.encode(tag)
     embedding = Normalize(vector)
     return embedding
