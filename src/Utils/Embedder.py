@@ -1,7 +1,14 @@
-from sentence_transformers import SentenceTransformer
+from google import genai
 import numpy as np
+import os
+from dotenv import load_dotenv
 
-model = SentenceTransformer("Leejy0-0/kr-con-embedding-sbert-v2")
+
+envPath = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+load_dotenv(dotenv_path=os.path.abspath(envPath))
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 # Normalization
@@ -12,7 +19,15 @@ def Normalize(vector):
 
 # Emvedding function
 def Embedding(tag: str):
+    try:
+        vector = (
+            client.models.embed_content(model="models/text-embedding-004", contents=tag)
+            .embeddings[0]
+            .values
+        )
 
-    vector = model.encode(tag)
-    embedding = Normalize(vector)
-    return embedding
+        embedding = Normalize(vector)
+        return embedding
+
+    except Exception as e:
+        print(f"Gemini exception: {e}")

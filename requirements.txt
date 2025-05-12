@@ -1,8 +1,9 @@
+google-genai
 fastapi
 uvicorn
-kafka-python
 python-dotenv
-pydantic
+kafka-python
 qdrant-client
-sentence-transformers
 numpy
+requests
+pydantic
