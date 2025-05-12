@@ -3,6 +3,7 @@ fastapi
 uvicorn
 python-dotenv
 kafka-python
+aiokafka
 qdrant-client
 numpy
 requests
