@@ -1,7 +1,7 @@
 import os
 from typing import List, Dict
-from collections import defaultdict
 from dotenv import load_dotenv
+from collections import defaultdict
 from qdrant_client import QdrantClient
 
 from src.Utils.Embedder import Embedding
@@ -21,8 +21,16 @@ client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
 def SearchUsers(tags: List[str], topK: int = 5, topKperTag: int = 5) -> List[Dict]:
     userScores = defaultdict(list)
 
-    for tag in tags:
-        vector = Embedding(tag)
+    # 여러 태그의 벡터를 한번에 계산하고, None이 아닌 벡터만 필터링
+    vectors = [Embedding(tag) for tag in tags]
+    vectors = [vector for vector in vectors if vector is not None]  # None 벡터 제외
+
+    # 유효한 벡터가 없다면 빈 리스트 반환
+    if not vectors:
+        return []
+
+    # 각 태그에 대해 검색 수행
+    for i, vector in enumerate(vectors):
         results = client.search(
             collection_name=QDRANT_COLLECTION,
             query_vector=vector,
@@ -35,6 +43,7 @@ def SearchUsers(tags: List[str], topK: int = 5, topKperTag: int = 5) -> List[Dic
             score = result.score
             userScores[userID].append(score)
 
+    # 유저 점수 계산
     avgScores = [
         {
             "userID": userID,
@@ -44,5 +53,6 @@ def SearchUsers(tags: List[str], topK: int = 5, topKperTag: int = 5) -> List[Dic
         for userID, scores in userScores.items()
     ]
 
+    # 점수를 기준으로 내림차순 정렬 후, 상위 topK 유저만 반환
     avgScores.sort(key=lambda x: x["score"], reverse=True)
     return avgScores[:topK]

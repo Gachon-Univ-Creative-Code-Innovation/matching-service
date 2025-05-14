@@ -1,8 +1,8 @@
-from google import genai
-import numpy as np
 import os
+import logging
+import numpy as np
+from google import genai
 from dotenv import load_dotenv
-
 
 envPath = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
 load_dotenv(dotenv_path=os.path.abspath(envPath))
@@ -13,8 +13,10 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Normalization
 def Normalize(vector):
-    norm = (vector / np.linalg.norm(vector)).tolist()
-    return norm
+    norm = np.linalg.norm(vector)
+    if norm == 0:
+        return vector  # 제로 벡터는 그대로 반환 (정규화 불가능)
+    return (vector / norm).tolist()
 
 
 # Emvedding function
@@ -30,4 +32,5 @@ def Embedding(tag: str):
         return embedding
 
     except Exception as e:
-        print(f"Gemini exception: {e}")
+        logging.error(f"Gemini API exception: {e}")
+        return None

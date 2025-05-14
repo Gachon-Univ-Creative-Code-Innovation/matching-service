@@ -1,4 +1,5 @@
 import os
+import asyncio
 import numpy as np
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
@@ -21,12 +22,13 @@ def cosineSim(vec1, vec2):
 
 
 # 유저의 대표 태그를 topK 개 뽑는 함수
-def RepresentTags(userID: int, topK: int = 5):
+async def RepresentTags(userID: int, topK: int = 5):
     # Qdrant에서 해당 유저의 모든 태그 벡터 가져오기
-    points, _ = client.scroll(
+    points, _ = await asyncio.to_thread(
+        client.scroll,
         collection_name=QDRANT_COLLECTION,
         scroll_filter=Filter(
-            must=[FieldCondition(key="userID", match=MatchValue(value=userID))]
+            must=[FieldCondition(key="userID", match=MatchValue(value=userID))],
         ),
         with_vectors=True,
         with_payload=True,
