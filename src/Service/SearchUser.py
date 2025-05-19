@@ -1,16 +1,36 @@
 import os
 from typing import List, Dict
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 from collections import defaultdict
 from qdrant_client import QdrantClient
+
 
 from src.Utils.Embedder import Embedding
 
 envPath = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
 load_dotenv(dotenv_path=os.path.abspath(envPath))
+
+QDRANT_HOST = None
+QDRANT_PORT = None
+
+rawQdrant = os.getenv("QDRANT_PORT")
 QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION")
-QDRANT_HOST = os.getenv("QDRANT_HOST")
-QDRANT_PORT = os.getenv("QDRANT_PORT")
+
+if rawQdrant:
+    try:
+        parsed = urlparse(rawQdrant)
+        if parsed.hostname and parsed.port:
+            QDRANT_HOST = parsed.hostname
+            QDRANT_PORT = parsed.port
+    except Exception:
+        pass
+
+if not QDRANT_HOST:
+    QDRANT_HOST = os.getenv("QDRANT_HOST", "qdrant")
+
+if not QDRANT_PORT:
+    QDRANT_PORT = int(os.getenv("QDRANT_PORT_NUM", 6333))
 
 
 client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)

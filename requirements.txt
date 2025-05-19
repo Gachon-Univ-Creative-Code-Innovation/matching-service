@@ -6,5 +6,5 @@ kafka-python
 aiokafka
 qdrant-client
 numpy
-requests
 pydantic
+prometheus-fastapi-instrumentator

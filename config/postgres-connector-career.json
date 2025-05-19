@@ -12,8 +12,11 @@
       "slot.name": "debezium_slot_career",
       "publication.name": "debezium_pub_career",
       "table.include.list": "public.Career_Tag",
-      "database.history.kafka.bootstrap.servers": "kafka:9092",
+      "database.history.kafka.bootstrap.servers": "kafka-service:9092",
       "database.history.kafka.topic": "schema-changes.career",
+      "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "publication.autocreate.mode": "disabled",
       "topic.prefix": "server"
     }
   }

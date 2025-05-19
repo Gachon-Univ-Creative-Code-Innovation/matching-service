@@ -1,6 +1,8 @@
 import asyncio
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.Consumer.FastApiConsumer import KafkaTagConsumer
 from src.Service.SearchUser import SearchUsers
@@ -10,6 +12,8 @@ from src.Service.RepresentUser import RepresentTags
 app = FastAPI(title="Matching Service")
 # consumer = KafkaTagConsumer(["GithubTags", "BlogTags"])
 consumer = KafkaTagConsumer(topics=["server.public.Career_Tag"])
+instrumentator = Instrumentator().instrument(app).expose(app)
+
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -19,9 +23,10 @@ logger = logging.getLogger(__name__)
 # Kafka Consumer 실행
 @app.on_event("startup")
 async def StartupEvent():
-    await consumer.WaitKafka()
-    logger.info("Starting Kafka consumer...")
+    logger.info("Starting Qdrant initialization...")
     await InitQdrant()
+
+    logger.info("Starting Kafka consumer...")
     await consumer.Start()
 
 

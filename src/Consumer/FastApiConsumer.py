@@ -1,13 +1,13 @@
 import os
-import time
 import json
 import asyncio
-import requests
+import logging
 from typing import List
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from aiokafka import AIOKafkaConsumer
-import logging
+from prometheus_client import Counter, start_http_server
+
 
 from src.Utils.Embedder import Embedding
 from src.Consumer.QdrantClient import UpsertVector
@@ -16,39 +16,19 @@ from src.Consumer.QdrantClient import UpsertVector
 envPath = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
 load_dotenv(dotenv_path=os.path.abspath(envPath))
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
-LOKI_HOST = os.getenv("LOKI_HOST")
 
 # 로깅
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+tagCounter = Counter("user_tags_total", "Total number of tags processed", ["tag"])
+
+
 # Kafka Json Message 형태
 class TagMessage(BaseModel):
     userID: int
     tags: List[str]
-
-
-# Loki DB에 태그 정보 저장
-async def SaveTagToLoki(userID: int, tag: str):
-    logLIne = f"userID={userID} tags={tag}"
-    timestamp = int(time.time() * 1e9)
-
-    logEntry = {
-        "streams": [
-            {
-                "stream": {"job": "tag-consumer", "tag": tag},
-                "values": [[str(timestamp), logLIne]],
-            }
-        ]
-    }
-
-    try:
-        await asyncio.to_thread(
-            requests.post, f"{LOKI_HOST}/loki/api/v1/push", json=logEntry
-        )
-    except Exception as e:
-        logger.error(f"Error saving to Loki: {e}")
 
 
 class KafkaTagConsumer:
@@ -63,25 +43,22 @@ class KafkaTagConsumer:
         self._running = True
         self._task = None
 
-    # Kafka 시작할 때까지 기다림
-    async def WaitKafka(self, host="kafka", port=9092, timeout=30):
-        for _ in range(timeout):
-            try:
-                _, self.writer = await asyncio.open_connection(host, port)
-                self.writer.close()
-                await self.writer.wait_closed()
-                return True
-            except Exception as e:
-                logger.error(f"Error connecting to Kafka: {e}")
-                await asyncio.sleep(1)
-        raise ConnectionError(
-            f"Kafka at {host}:{port} is not available after {timeout} seconds."
-        )
-
     # Kafka 연결 시작
     async def Start(self):
-        await self.consumer.start()
-        self._task = asyncio.create_task(self.ConsumeLoop())
+        max_retries = 5
+        for attempt in range(1, max_retries + 1):
+            try:
+                await self.consumer.start()
+                self._task = asyncio.create_task(self.ConsumeLoop())
+                logger.info("✅ Kafka consumer started successfully.")
+                return
+            except Exception as e:
+                logger.error(
+                    f"❌ Kafka start failed (attempt {attempt}/{max_retries}): {e}"
+                )
+                await asyncio.sleep(5)
+
+        raise ConnectionError("Kafka consumer could not connect after retries.")
 
     # 메시지 소비
     async def ConsumeLoop(self):
@@ -126,8 +103,7 @@ class KafkaTagConsumer:
             vector = Embedding(tag)
             logging.info(f"[Kafka] op={op}, tag={tag}, vector={vector}")
 
-            # Loki 저장
-            await SaveTagToLoki(userID, tag)
+            tagCounter.labels(tag=tag).inc()
             await UpsertVector(int(userID), [(tag, vector)])
 
         except Exception as e:
