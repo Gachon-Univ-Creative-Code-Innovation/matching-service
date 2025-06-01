@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -10,6 +11,15 @@ from src.Consumer.QdrantClient import InitQdrant
 from src.Service.RepresentUser import RepresentTags
 
 app = FastAPI(title="Matching Service")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 # consumer = KafkaTagConsumer(["GithubTags", "BlogTags"])
 consumer = KafkaTagConsumer(topics=["server.public.Career_Tag"])
 instrumentator = Instrumentator().instrument(app).expose(app)
@@ -40,7 +50,7 @@ async def ShutdownEvent():
 @app.get("/api/matching-service/search-user")
 async def SearchUser(tags: str, topK: int = 5, topKperTag: int = 5):
     try:
-        tags = tags.split(",")
+        tags = [tag.strip().lstrip("#").strip() for tag in tags.split(",")]
         result = await asyncio.to_thread(SearchUsers, tags, topK, topKperTag)
         return {"status": 200, "message": "유저 검색 성공", "data": result}
     except Exception as e:
