@@ -4,6 +4,7 @@ metadata:
   name: connect
   labels:
     app: connect
+  namespace: matching-service
 spec:
   replicas: 1
   selector:
@@ -45,6 +46,7 @@ metadata:
   name: connect
   labels:
     app: connect
+  namespace: matching-service
 spec:
   type: NodePort
   ports:

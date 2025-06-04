@@ -2,6 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: prometheus-pvc
+  namespace: matching-service
 spec:
   accessModes:
     - ReadWriteOnce
@@ -15,6 +16,7 @@ metadata:
   name: prometheus-config
   labels:
     name: prometheus-config
+  namespace: matching-service
 data:
     prometheus.yml: |
       global:
@@ -30,6 +32,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
+  namespace: matching-service
 spec:
   replicas: 1
   selector:
@@ -64,6 +67,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prometheus
+  namespace: matching-service
 spec:
   selector:
     app: prometheus
