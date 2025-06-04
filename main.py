@@ -20,7 +20,7 @@ app.add_middleware(
 )
 
 
-# consumer = KafkaTagConsumer(["GithubTags", "BlogTags"])
+# consumer = KafkaTagConsumer(topics=["server.public.Career_Tag", "server.public.BlogTags"])
 consumer = KafkaTagConsumer(topics=["server.public.Career_Tag"])
 instrumentator = Instrumentator().instrument(app).expose(app)
 

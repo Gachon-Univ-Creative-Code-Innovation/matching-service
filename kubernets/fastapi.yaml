@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastapi-consumer
+  labels:
+    app: fastapi-consumer
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8000"
+  namespace: matching-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fastapi-consumer
+  template:
+    metadata:
+      labels:
+        app: fastapi-consumer
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+    spec:
+      containers:
+        - name: fastapi-consumer
+          image: kanghyeonseung/fastapi-consumer
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: env-volume
+              mountPath: /app/.env
+              subPath: .env
+      volumes:
+        - name: env-volume
+          secret:
+            secretName: fastapi-env-secret
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fastapi-consumer-service
+  namespace: matching-service
+spec:
+  type: NodePort
+  selector:
+    app: fastapi-consumer
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+      nodePort: 30080
