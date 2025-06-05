@@ -6,7 +6,7 @@ from typing import List
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from aiokafka import AIOKafkaConsumer
-from prometheus_client import Counter, start_http_server
+from prometheus_client import Counter
 
 
 from src.Utils.Embedder import Embedding
@@ -20,7 +20,6 @@ KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS")
 # 로깅
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 tagCounter = Counter("user_tags_total", "Total number of tags processed", ["tag"])
 
@@ -38,7 +37,9 @@ class KafkaTagConsumer:
         self.consumer = AIOKafkaConsumer(
             *topics,
             bootstrap_servers=[KAFKA_BOOTSTRAP_SERVERS],
-            value_deserializer=lambda x: json.loads(x.decode("utf-8")),
+            value_deserializer=lambda x: (
+                json.loads(x.decode("utf-8")) if x is not None else None
+            ),
         )
         self._running = True
         self._task = None
@@ -86,28 +87,46 @@ class KafkaTagConsumer:
     async def HandleMessage(self, message):
         try:
             data = message.value
+            if data is None:
+                logger.warning(f"[Kafka] Received None data. Raw message: {message}")
+                return
             payload = data.get("payload", {})
             op = payload.get("op")  # c (create), u (update), d (delete) 등
 
-            if op not in ("c", "u"):
+            # create만 구독, 나머지는 무시
+            if op != "c":
+                logger.info(f"[Kafka] Non-create op ignored. op={op}, message: {data}")
                 return
 
             after = payload.get("after", {})
             if not after:
+                logger.warning(f"[Kafka] after is empty. Raw message: {message.value}")
                 return
 
-            userID = str(after["user_id"])
-            tag = after["tag_name"]
+            userID = after.get("user_id")
+            tag = after.get("tag_name")
+            if userID is None or tag is None:
+                logger.warning(
+                    f"[Kafka] user_id or tag_name missing. after: {after}, topic: {message.topic}"
+                )
+                return
 
             # 벡터 생성 및 저장
             vector = Embedding(tag)
-            logging.info(f"[Kafka] op={op}, tag={tag}, vector={vector}")
+            logging.info(
+                f"[Kafka] topic={message.topic}, op={op}, tag={tag}, user_id={userID}, vector={vector}"
+            )
 
             tagCounter.labels(tag=tag).inc()
             await UpsertVector(int(userID), [(tag, vector)])
 
         except Exception as e:
-            logger.error(f"[Message Handling Error] {e}")
+            logger.error(
+                f"[Message Handling Error] {e}, message: {getattr(message, 'value', None)}"
+            )
+            import traceback
+
+            logger.error(traceback.format_exc())
 
     # Consumer 종료
     async def Stop(self):

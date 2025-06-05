@@ -2,7 +2,7 @@
     "name": "postgres-connector-career",
     "config": {
       "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
-      "database.hostname": "postgres.github-service.svc",
+      "database.hostname": "postgres.github.svc",
       "database.port": "5432",
       "database.user": "user",
       "database.password": "password",
@@ -12,7 +12,7 @@
       "slot.name": "debezium_slot_career",
       "publication.name": "debezium_pub_career",
       "table.include.list": "public.Career_Tag",
-      "database.history.kafka.bootstrap.servers": "kafka-service:9092",
+      "database.history.kafka.bootstrap.servers": "kafka.kafka:9092",
       "database.history.kafka.topic": "schema-changes.career",
       "key.converter": "org.apache.kafka.connect.json.JsonConverter",
       "value.converter": "org.apache.kafka.connect.json.JsonConverter",
@@ -20,4 +20,3 @@
       "topic.prefix": "server"
     }
   }
-  

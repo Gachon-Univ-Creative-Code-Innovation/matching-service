@@ -2,19 +2,20 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: grafana-pvc
-  namespace: matching-service
+  namespace: monitoring
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
+  storageClassName: gp2
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
-  namespace: matching-service
+  namespace: monitoring
 spec:
   replicas: 1
   selector:
@@ -25,6 +26,13 @@ spec:
       labels:
         app: grafana
     spec:
+      initContainers:
+        - name: fix-permissions
+          image: busybox
+          command: ["sh", "-c", "chown -R 472:472 /var/lib/grafana"]
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
       containers:
         - name: grafana
           image: grafana/grafana:latest
@@ -45,7 +53,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: grafana
-  namespace: matching-service
+  namespace: monitoring
 spec:
   selector:
     app: grafana

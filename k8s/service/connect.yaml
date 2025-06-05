@@ -4,7 +4,7 @@ metadata:
   name: connect
   labels:
     app: connect
-  namespace: matching-service
+  namespace: matching
 spec:
   replicas: 1
   selector:
@@ -28,7 +28,7 @@ spec:
               port: 8083
           env:
             - name: BOOTSTRAP_SERVERS
-              value: kafka-service:9092
+              value: kafka.kafka:9092
             - name: GROUP_ID
               value: "1"
             - name: OFFSET_STORAGE_TOPIC
@@ -46,7 +46,7 @@ metadata:
   name: connect
   labels:
     app: connect
-  namespace: matching-service
+  namespace: matching
 spec:
   type: NodePort
   ports:
