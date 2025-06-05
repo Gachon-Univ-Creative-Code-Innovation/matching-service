@@ -1,8 +1,7 @@
 import asyncio
 import logging
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.Consumer.FastApiConsumer import KafkaTagConsumer
@@ -20,8 +19,8 @@ app.add_middleware(
 )
 
 
-# consumer = KafkaTagConsumer(topics=["server.public.Career_Tag", "server.public.BlogTags"])
-consumer = KafkaTagConsumer(topics=["server.public.Career_Tag"])
+# consumer = KafkaTagConsumer(topics=["server.public.Career_Tag", "server.public.tag"])
+consumer = KafkaTagConsumer(topics=["server.public.Career_Tag", "server.public.tag"])
 instrumentator = Instrumentator().instrument(app).expose(app)
 
 
