@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-redis-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-redis-exporter
+  template:
+    metadata:
+      labels:
+        app: user-redis-exporter
+    spec:
+      containers:
+      - name: user-redis-exporter
+        image: oliver006/redis_exporter:latest
+        args:
+          - "--redis.addr=redis://redis-service.user.svc.cluster.local:6379"
+        ports:
+        - containerPort: 9121
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-redis-exporter
+  namespace: monitoring
+  labels:
+    app: user-redis-exporter
+spec:
+  selector:
+    app: user-redis-exporter
+  ports:
+  - name: metrics
+    port: 9201
+    targetPort: 9121

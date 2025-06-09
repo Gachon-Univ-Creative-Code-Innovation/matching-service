@@ -8,3 +8,4 @@ qdrant-client
 numpy
 pydantic
 prometheus-fastapi-instrumentator
+PyJWT

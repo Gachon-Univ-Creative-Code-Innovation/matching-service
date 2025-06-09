@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: message-postgres-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: message-postgres-exporter
+  template:
+    metadata:
+      labels:
+        app: message-postgres-exporter
+    spec:
+      containers:
+      - name: message-postgres-exporter
+        image: prometheuscommunity/postgres-exporter
+        env:
+        - name: DATA_SOURCE_NAME
+          value: "postgresql://postgres:your-postgres-password@postgres-svc.message.svc.cluster.local:5432/message_db?sslmode=disable"
+        ports:
+        - containerPort: 9187
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: message-postgres-exporter
+  namespace: monitoring
+spec:
+  selector:
+    app: message-postgres-exporter
+  ports:
+  - name: metrics
+    port: 9203
+    targetPort: 9187

@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from urllib.parse import urlparse
 from collections import defaultdict
 from qdrant_client import QdrantClient
-
+import logging
 
 from src.Utils.Embedder import Embedding
 
@@ -38,7 +38,9 @@ client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT)
 
 # Tag 별로 유저를 검색하여 평균적으로 높은 유저를 찾는 함수
 # topK: 검색할 유저의 수, topKperTag: 태그별로 검색할 유저의 수
-def SearchUsers(tags: List[str], topK: int = 5, topKperTag: int = 5) -> List[Dict]:
+def SearchUsers(
+    tags: List[str], id: int, topK: int = 5, topKperTag: int = 10
+) -> List[Dict]:
     userScores = defaultdict(list)
 
     # 여러 태그의 벡터를 한번에 계산하고, None이 아닌 벡터만 필터링
@@ -54,12 +56,14 @@ def SearchUsers(tags: List[str], topK: int = 5, topKperTag: int = 5) -> List[Dic
         results = client.search(
             collection_name=QDRANT_COLLECTION,
             query_vector=vector,
-            limit=topKperTag,
+            limit=topKperTag + 1,  # 자기 자신이 있을 수 있으니 1개 더 요청
             with_payload=True,
         )
 
         for result in results:
             userID = result.payload.get("userID")
+            if str(userID) == str(id):
+                continue  # 자기 자신은 건너뜀
             score = result.score
             userScores[userID].append(score)
 
@@ -75,4 +79,8 @@ def SearchUsers(tags: List[str], topK: int = 5, topKperTag: int = 5) -> List[Dic
 
     # 점수를 기준으로 내림차순 정렬 후, 상위 topK 유저만 반환
     avgScores.sort(key=lambda x: x["score"], reverse=True)
-    return avgScores[:topK]
+    result = avgScores[:topK]
+    logging.info(
+        f"[SearchUsers] Returned userIDs: {[user['userID'] for user in result]}"
+    )
+    return result

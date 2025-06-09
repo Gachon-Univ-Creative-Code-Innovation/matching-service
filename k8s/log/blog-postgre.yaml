@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog-postgres-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blog-postgres-exporter
+  template:
+    metadata:
+      labels:
+        app: blog-postgres-exporter
+    spec:
+      containers:
+      - name: blog-postgres-exporter
+        image: prometheuscommunity/postgres-exporter
+        env:
+        - name: DATA_SOURCE_NAME
+          value: "postgresql://hyeonji:1234@postgres.blog.svc.cluster.local:5432/blog?sslmode=disable"
+        ports:
+        - containerPort: 9187
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blog-postgres-exporter
+  namespace: monitoring
+spec:
+  selector:
+    app: blog-postgres-exporter
+  ports:
+  - name: metrics
+    port: 9205
+    targetPort: 9187

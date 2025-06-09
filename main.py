@@ -1,25 +1,17 @@
 import asyncio
 import logging
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.Consumer.FastApiConsumer import KafkaTagConsumer
 from src.Service.SearchUser import SearchUsers
 from src.Consumer.QdrantClient import InitQdrant
 from src.Service.RepresentUser import RepresentTags
+from src.Utils.GetJWT import GetTokenFromHeader, GetDataFromToken
 
 app = FastAPI(title="Matching Service")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
-# consumer = KafkaTagConsumer(topics=["server.public.Career_Tag", "server.public.tag"])
 consumer = KafkaTagConsumer(topics=["server.public.Career_Tag", "server.public.tag"])
 instrumentator = Instrumentator().instrument(app).expose(app)
 
@@ -47,10 +39,12 @@ async def ShutdownEvent():
 
 # Tag 기반으로 가장 유사도가 높은 유저 검색
 @app.get("/api/matching-service/search-user")
-async def SearchUser(tags: str, topK: int = 5, topKperTag: int = 5):
+async def SearchUser(request: Request, tags: str, topK: int = 5, topKperTag: int = 10):
     try:
+        accessToken = GetTokenFromHeader(request)
+        userID = GetDataFromToken(accessToken, "user_id")
         tags = [tag.strip().lstrip("#").strip() for tag in tags.split(",")]
-        result = await asyncio.to_thread(SearchUsers, tags, topK, topKperTag)
+        result = await asyncio.to_thread(SearchUsers, tags, userID, topK, topKperTag)
         return {"status": 200, "message": "유저 검색 성공", "data": result}
     except Exception as e:
         return {"status": 500, "message": "유저 검색 실패", "error": str(e)}

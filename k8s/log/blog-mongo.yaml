@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog-mongodb-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blog-mongodb-exporter
+  template:
+    metadata:
+      labels:
+        app: blog-mongodb-exporter
+    spec:
+      containers:
+      - name: blog-mongodb-exporter
+        image: bitnami/mongodb-exporter:latest
+        env:
+        - name: MONGODB_URI
+          value: "mongodb://admin:rThFH79BWNglB2uB@mongodb.blog.svc.cluster.local:27017/admin"
+        ports:
+        - containerPort: 9216
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blog-mongodb-exporter
+  namespace: monitoring
+spec:
+  selector:
+    app: blog-mongodb-exporter
+  ports:
+  - name: metrics
+    port: 9208
+    targetPort: 9216

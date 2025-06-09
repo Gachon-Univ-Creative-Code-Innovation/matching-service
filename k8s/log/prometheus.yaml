@@ -23,6 +23,15 @@ data:
     global:
       scrape_interval: 5s
 
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets:
+              - 'monitoring-kube-prometheus-alertmanager.monitoring.svc.cluster.local:9093'
+
+    rule_files:
+      - /etc/prometheus/rules/alert-rules.yaml
+
     scrape_configs:
       - job_name: 'matching-service'
         metrics_path: /metrics
@@ -36,10 +45,128 @@ data:
         metrics_path: /metrics
         static_configs:
           - targets: ['portfolio-service.portfolio.svc.cluster.local:8080']
+      - job_name: 'summarize-service'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['summarize-service.summarize.svc.cluster.local:8500']
+      - job_name: 'user-service'
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ['user-service.user.svc.cluster.local:8080']
+      - job_name: 'blog-service'
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ['blog-service.blog.svc.cluster.local:8030']
+      - job_name: 'message-service'
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ['message-service.message.svc.cluster.local:8011']
+      - job_name: 'alarm-service'
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ['alarm-service.alarm.svc.cluster.local:8087']
+
+      - job_name: 'gateway-service'
+        metrics_path: /actuator/prometheus
+        static_configs:
+          - targets: ['apigateway-service.gateway.svc.cluster.local:8000']
+      - job_name: 'kafka-exporter'
+        static_configs:
+          - targets: ['kafka-exporter.monitoring.svc.cluster.local:9308']
+
+      - job_name: 'matching-service-qdrant'
+        static_configs:
+          - targets: ['qdrant.matching.svc.cluster.local:6333']
+      - job_name: 'user-service-postgres'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['user-postgres-exporter.monitoring.svc.cluster.local:9200']
+      - job_name: 'user-service-redis'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['user-redis-exporter.monitoring.svc.cluster.local:9201']
+      - job_name: 'github-postgres-exporter'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['github-postgres-exporter.monitoring.svc.cluster.local:9202']
+      - job_name: 'blog-redis-exporter'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['blog-redis-exporter.monitoring.svc.cluster.local:9206']
+      - job_name: 'alarm-postgres-exporter'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['alarm-postgres-exporter.monitoring.svc.cluster.local:9204']
+      - job_name: 'blog-elasticsearch-exporter'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['blog-elasticsearch-exporter.monitoring.svc.cluster.local:9207']
+      - job_name: 'blog-mongo-exporter'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['blog-mongodb-exporter.monitoring.svc.cluster.local:9208']
+      - job_name: 'blog-postgres-exporter'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['blog-postgres-exporter.monitoring.svc.cluster.local:9205']
+      - job_name: 'message-postgres-exporter'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['message-postgres-exporter.monitoring.svc.cluster.local:9203']
+
       - job_name: 'node-exporter'
         metrics_path: /metrics
         static_configs:
           - targets: ['monitoring-prometheus-node-exporter:9100']
+      - job_name: 'kube-state-metrics'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['monitoring-kube-state-metrics.monitoring.svc.cluster.local:8080']
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+data:
+  alert-rules.yaml: |
+    groups:
+    - name: pod.rules
+      rules:
+        # 1) 파드 재시작 감지 (5분 동안 1회 이상 재시작)
+        - alert: PodRestartDetected
+          expr: changes(kube_pod_container_status_restarts_total[5m]) > 0
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod Restart Detected"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} restarted"
+
+        # 2) 에러율 5% 이상 감지 (5xx 응답 비율이 5% 초과)
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(http_requests_total{status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total[5m]))
+            > 0.05
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High HTTP 5xx Error Rate"
+            description: "HTTP 5xx error rate is above 5% for 5 minutes"
+
+        # 3) CPU 사용률 80% 초과 감지
+        - alert: HighCPUUsage
+          expr: avg(rate(container_cpu_usage_seconds_total[5m])) by (node) > 0.8
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High CPU Usage"
+            description: "CPU usage on node {{ $labels.node }} is above 80% for 5 minutes"
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -76,6 +203,8 @@ spec:
             - name: config-volume
               mountPath: /etc/prometheus/prometheus.yml
               subPath: prometheus.yml
+            - name: prometheus-rules
+              mountPath: /etc/prometheus/rules
       volumes:
         - name: prometheus-storage
           persistentVolumeClaim:
@@ -83,6 +212,9 @@ spec:
         - name: config-volume
           configMap:
             name: prometheus-config
+        - name: prometheus-rules
+          configMap:
+            name: prometheus-rules
 ---
 apiVersion: v1
 kind: Service

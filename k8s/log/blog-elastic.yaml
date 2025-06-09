@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog-elasticsearch-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blog-elasticsearch-exporter
+  template:
+    metadata:
+      labels:
+        app: blog-elasticsearch-exporter
+    spec:
+      containers:
+      - name: blog-elasticsearch-exporter
+        image: quay.io/prometheuscommunity/elasticsearch-exporter
+        args:
+          - "--es.uri=http://elasticsearch.blog.svc.cluster.local:9200"
+        ports:
+        - containerPort: 9114
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blog-elasticsearch-exporter
+  namespace: monitoring
+spec:
+  selector:
+    app: blog-elasticsearch-exporter
+  ports:
+  - name: metrics
+    port: 9207
+    targetPort: 9114

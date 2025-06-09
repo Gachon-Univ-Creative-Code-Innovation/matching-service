@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-postgres-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-postgres-exporter
+  template:
+    metadata:
+      labels:
+        app: user-postgres-exporter
+    spec:
+      containers:
+      - name: user-postgres-exporter
+        image: prometheuscommunity/postgres-exporter
+        env:
+        - name: DATA_SOURCE_NAME
+          value: "postgresql://useradmin:userpassword123@postgres-service.user.svc.cluster.local:5432/userdb?sslmode=disable"
+        ports:
+        - containerPort: 9187
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-postgres-exporter
+  namespace: monitoring
+spec:
+  selector:
+    app: user-postgres-exporter
+  ports:
+  - name: metrics
+    port: 9200
+    targetPort: 9187
